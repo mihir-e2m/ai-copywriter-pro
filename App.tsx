@@ -4,6 +4,7 @@ import { FormPanel } from './components/FormPanel';
 import { ChatPanel } from './components/ChatPanel';
 import { HistorySidebar } from './components/HistorySidebar';
 import { createChatSession, continueChat } from './services/geminiService';
+import { sendToN8nWebhook } from './services/n8nService';
 import type { FormState, ChatMessage, Conversation } from './types';
 import type { Chat } from '@google/genai';
 
@@ -45,12 +46,6 @@ const App: React.FC = () => {
       conversationId = newConversation.id;
     }
 
-    if (!chat) {
-      // Fallback if something weird happens, though the above block covers the null case
-      console.error('No active chat session.');
-      return;
-    }
-
     const userMessage: ChatMessage = {
       id: Date.now(),
       sender: 'user',
@@ -64,7 +59,9 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const assistantResponseText = await continueChat(chat, text);
+      // Use n8n webhook instead of Gemini directly
+      const assistantResponseText = await sendToN8nWebhook(text);
+
       const assistantMessage: ChatMessage = {
         id: Date.now() + 1,
         sender: 'assistant',
@@ -75,7 +72,7 @@ const App: React.FC = () => {
         c.id === conversationId ? { ...c, messages: [...c.messages, assistantMessage] } : c
       ));
     } catch (error) {
-      console.error('Error continuing chat:', error);
+      console.error('Error sending message:', error);
       const errorMessage: ChatMessage = {
         id: Date.now() + 1,
         sender: 'assistant',
