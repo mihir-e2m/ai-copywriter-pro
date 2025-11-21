@@ -27,7 +27,26 @@ const App: React.FC = () => {
   const chatRef = useRef<Chat | null>(null);
 
   const handleSendMessage = useCallback(async (text: string) => {
-    if (!chatRef.current || currentConversationId === null) {
+    let conversationId = currentConversationId;
+    let chat = chatRef.current;
+
+    if (!conversationId) {
+      const newConversation: Conversation = {
+        id: Date.now(),
+        title: text.slice(0, 40) + (text.length > 40 ? '...' : ''),
+        messages: [],
+      };
+
+      chat = createChatSession(`You are a professional copywriter. The user asked: "${text}".`);
+      chatRef.current = chat;
+
+      setConversations(prev => [...prev, newConversation]);
+      setCurrentConversationId(newConversation.id);
+      conversationId = newConversation.id;
+    }
+
+    if (!chat) {
+      // Fallback if something weird happens, though the above block covers the null case
       console.error('No active chat session.');
       return;
     }
@@ -38,23 +57,23 @@ const App: React.FC = () => {
       text,
       status: 'sent',
     };
-    
-    setConversations(prev => prev.map(c => 
-        c.id === currentConversationId ? { ...c, messages: [...c.messages, userMessage] } : c
+
+    setConversations(prev => prev.map(c =>
+      c.id === conversationId ? { ...c, messages: [...c.messages, userMessage] } : c
     ));
     setIsLoading(true);
 
     try {
-      const assistantResponseText = await continueChat(chatRef.current, text);
+      const assistantResponseText = await continueChat(chat, text);
       const assistantMessage: ChatMessage = {
         id: Date.now() + 1,
         sender: 'assistant',
         text: assistantResponseText,
         status: 'sent',
       };
-       setConversations(prev => prev.map(c => 
-        c.id === currentConversationId ? { ...c, messages: [...c.messages, assistantMessage] } : c
-    ));
+      setConversations(prev => prev.map(c =>
+        c.id === conversationId ? { ...c, messages: [...c.messages, assistantMessage] } : c
+      ));
     } catch (error) {
       console.error('Error continuing chat:', error);
       const errorMessage: ChatMessage = {
@@ -63,9 +82,9 @@ const App: React.FC = () => {
         text: 'Sorry, something went wrong while getting my response.',
         status: 'error',
       };
-      setConversations(prev => prev.map(c => 
-        c.id === currentConversationId ? { ...c, messages: [...c.messages, errorMessage] } : c
-    ));
+      setConversations(prev => prev.map(c =>
+        c.id === conversationId ? { ...c, messages: [...c.messages, errorMessage] } : c
+      ));
     } finally {
       setIsLoading(false);
     }
@@ -82,27 +101,27 @@ const App: React.FC = () => {
         title: formData.topicSubject || 'New Conversation',
         messages: [],
       };
-      
+
       chat = createChatSession(`You are a professional copywriter helping a user with their project on the topic: "${formData.topicSubject}".`);
       chatRef.current = chat;
-      
+
       setConversations(prev => [...prev, newConversation]);
       setCurrentConversationId(newConversation.id);
       conversationId = newConversation.id;
     } else if (!chat) {
       // Re-initialize chat for an existing conversation if needed
       const currentConv = conversations.find(c => c.id === conversationId);
-      if(currentConv) {
+      if (currentConv) {
         chat = createChatSession(`You are a professional copywriter helping a user with their project on the topic: "${currentConv.title}".`);
         chatRef.current = chat;
       }
     }
-    
+
     const promptText = buildPromptFromForm(formData);
-    
+
     // Use a slight delay to ensure state updates before sending message
     setTimeout(() => {
-        handleSendMessage(promptText);
+      handleSendMessage(promptText);
     }, 0);
 
   }, [currentConversationId, conversations, handleSendMessage]);
@@ -111,7 +130,7 @@ const App: React.FC = () => {
   const handleSelectConversation = useCallback(async (id: number) => {
     const selectedConversation = conversations.find(c => c.id === id);
     if (!selectedConversation) return;
-    
+
     setIsLoading(true);
     const chat = createChatSession(`You are a professional copywriter helping a user with their project on the topic: "${selectedConversation.title}".`);
     chatRef.current = chat;
@@ -137,22 +156,22 @@ const App: React.FC = () => {
           onSelectConversation={handleSelectConversation}
           onNewChat={handleNewChat}
         />
-        <main className="flex-1 flex flex-col p-6 lg:p-8 min-w-0">
-          <div className="text-center mb-6">
+        <main className="flex-1 flex flex-col p-4 lg:p-6 min-w-0">
+          <div className="text-center mb-4">
             <h1 className="text-4xl font-bold font-space-grotesk text-white text-glow">Copy Writing Agent</h1>
             <p className="text-slate-400 mt-2">Fill the form to get started, or ask a follow-up in the chat.</p>
           </div>
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-0 bg-[#0A101A]/50 border border-white/10 rounded-xl overflow-hidden min-h-0">
-            <div className="lg:col-span-2 p-6 overflow-y-auto">
-              <FormPanel 
+            <div className="lg:col-span-2 p-4 overflow-y-auto">
+              <FormPanel
                 key={currentConversationId || 'new-form'}
-                onSubmit={handleFormSubmit} 
+                onSubmit={handleFormSubmit}
               />
             </div>
             <div className="lg:col-span-3 flex flex-col border-t lg:border-t-0 lg:border-l border-white/10">
-              <ChatPanel 
+              <ChatPanel
                 conversation={currentConversation}
-                isLoading={isLoading} 
+                isLoading={isLoading}
                 onSendMessage={handleSendMessage}
               />
             </div>

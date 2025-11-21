@@ -33,7 +33,7 @@ export const TagInput: React.FC<TagInputProps> = ({ tags, setTags, placeholder }
   };
 
   return (
-    <div className="flex flex-wrap items-center w-full bg-[#0A101A]/50 border border-white/20 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-orange-500 transition">
+    <div className="flex flex-wrap items-center w-full bg-[#0A101A]/50 border border-white/20 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-orange-500 transition">
       {tags.map((tag, index) => (
         <div key={index} className="flex items-center bg-orange-500/30 text-orange-200 rounded-md px-2 py-1 text-sm mr-2 mb-1 mt-1">
           {tag}
@@ -47,7 +47,7 @@ export const TagInput: React.FC<TagInputProps> = ({ tags, setTags, placeholder }
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        className="flex-grow bg-transparent outline-none p-1 text-slate-200 placeholder-slate-500"
+        className="flex-grow bg-transparent outline-none p-1 text-sm text-slate-200 placeholder-slate-500"
         placeholder={tags.length === 0 ? placeholder : 'Add more...'}
       />
     </div>

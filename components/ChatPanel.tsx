@@ -4,9 +4,9 @@ import { ChatMessage as ChatMessageComponent } from './ChatMessage';
 import type { Conversation } from '../types';
 
 interface ChatPanelProps {
-  conversation: Conversation | undefined;
-  isLoading: boolean;
-  onSendMessage: (text: string) => void;
+    conversation: Conversation | undefined;
+    isLoading: boolean;
+    onSendMessage: (text: string) => void;
 }
 
 const ChatSkeleton: React.FC = () => (
@@ -31,7 +31,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ conversation, isLoading, o
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messages = conversation?.messages ?? [];
     const currentConversationId = conversation?.id ?? null;
-    
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
@@ -44,32 +44,34 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ conversation, isLoading, o
 
     return (
         <div className="flex flex-col flex-1 min-w-0 h-full">
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {!currentConversationId && !isLoading && (
-                    <div className="flex h-full flex-col items-center justify-center text-center text-slate-400 p-8">
+            <div className="flex-1 overflow-y-auto flex flex-col">
+                {!currentConversationId && !isLoading ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center text-slate-400 p-8">
                         <SparklesIcon />
                         <h2 className="mt-4 text-xl font-bold text-slate-200 font-space-grotesk">Start Creating</h2>
                         <p className="mt-2 max-w-xs">
-                          Fill out the form on the left to generate your first piece of copy. Your conversation will appear here.
+                            Fill out the form on the left to generate your first piece of copy, or just start chatting below.
                         </p>
                     </div>
-                )}
-            
-                {messages.map((msg) => (
-                    <ChatMessageComponent key={msg.id} message={msg} />
-                ))}
-                
-                {isGeneratingFirstMessage && <ChatSkeleton />}
+                ) : (
+                    <div className="p-6 space-y-6 flex-1">
+                        {messages.map((msg) => (
+                            <ChatMessageComponent key={msg.id} message={msg} />
+                        ))}
 
-                {isLoading && messages.length > 0 && messages[messages.length-1].sender === 'user' && (
-                    <div className="flex w-full max-w-lg">
-                        <ChatMessageComponent message={{id: -1, sender: 'assistant', text: '', status: 'loading'}}/>
+                        {isGeneratingFirstMessage && <ChatSkeleton />}
+
+                        {isLoading && messages.length > 0 && messages[messages.length - 1].sender === 'user' && (
+                            <div className="flex w-full max-w-lg">
+                                <ChatMessageComponent message={{ id: -1, sender: 'assistant', text: '', status: 'loading' }} />
+                            </div>
+                        )}
+                        <div ref={messagesEndRef} />
                     </div>
                 )}
-                <div ref={messagesEndRef} />
             </div>
             <div className="p-4 border-t border-white/10">
-                <Composer onSendMessage={onSendMessage} disabled={isLoading || !currentConversationId} />
+                <Composer onSendMessage={onSendMessage} disabled={isLoading} />
             </div>
         </div>
     );
