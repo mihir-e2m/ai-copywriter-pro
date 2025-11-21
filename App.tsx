@@ -168,7 +168,7 @@ const App: React.FC = () => {
                 onSubmit={handleFormSubmit}
               />
             </div>
-            <div className="lg:col-span-3 flex flex-col border-t lg:border-t-0 lg:border-l border-white/10">
+            <div className="lg:col-span-3 flex flex-col border-t lg:border-t-0 lg:border-l border-white/10 overflow-hidden">
               <ChatPanel
                 conversation={currentConversation}
                 isLoading={isLoading}

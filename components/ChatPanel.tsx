@@ -43,10 +43,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ conversation, isLoading, o
     const isGeneratingFirstMessage = isLoading && messages.length === 0 && !!currentConversationId;
 
     return (
-        <div className="flex flex-col flex-1 min-w-0 h-full">
-            <div className="flex-1 overflow-y-auto flex flex-col">
+        <div className="flex flex-col flex-1 min-w-0 h-full min-h-0">
+            <div className="flex-1 flex flex-col min-h-0">
                 {!currentConversationId && !isLoading ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center text-slate-400 p-8">
+                    <div className="flex h-full flex-col items-center justify-center text-center text-slate-400 p-8">
                         <SparklesIcon />
                         <h2 className="mt-4 text-xl font-bold text-slate-200 font-space-grotesk">Start Creating</h2>
                         <p className="mt-2 max-w-xs">
@@ -54,7 +54,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ conversation, isLoading, o
                         </p>
                     </div>
                 ) : (
-                    <div className="p-6 space-y-6 flex-1">
+                    <div className="flex-1 overflow-y-auto flex flex-col p-6 space-y-6">
                         {messages.map((msg) => (
                             <ChatMessageComponent key={msg.id} message={msg} />
                         ))}
