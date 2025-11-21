@@ -43,8 +43,8 @@ export const FormPanel: React.FC<FormPanelProps> = ({ onSubmit }) => {
 
 
   return (
-    <div className="bg-[#101827]/70 backdrop-blur-lg border border-white/10 rounded-xl p-6 md:p-8 shadow-2xl animate-fade-in">
-      <form onSubmit={handleSubmit} className="space-y-8">
+    <div className="animate-fade-in">
+      <form onSubmit={handleSubmit} className="space-y-8 mx-auto">
         <div>
           <label htmlFor="topicSubject" className="block text-sm font-medium text-slate-300 mb-2">Topic / Subject</label>
           <input type="text" name="topicSubject" id="topicSubject" value={formState.topicSubject} onChange={handleChange} className="w-full bg-[#0A101A]/50 border border-white/20 rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition" placeholder="e.g., The Future of AI" required />
@@ -85,7 +85,7 @@ export const FormPanel: React.FC<FormPanelProps> = ({ onSubmit }) => {
 
         <div className="text-center pt-4">
             <Button type="submit">
-                Generate & Open Chat
+                Generate
             </Button>
         </div>
       </form>

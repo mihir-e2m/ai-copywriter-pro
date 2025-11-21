@@ -18,3 +18,9 @@ export interface ChatMessage {
   text: string;
   status: 'sent' | 'loading' | 'error';
 }
+
+export interface Conversation {
+    id: number;
+    title: string;
+    messages: ChatMessage[];
+}
