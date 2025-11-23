@@ -167,7 +167,7 @@ const App: React.FC = () => {
   const currentConversation = conversations.find(c => c.id === currentConversationId);
 
   return (
-    <div className="h-screen bg-gradient-to-br from-[#020d1f] via-[#1a182e] to-[#593d1c] text-slate-200 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-orange-50 via-slate-50 to-orange-100 dark:from-[#0a0e1a] dark:via-[#1a1625] dark:to-[#2d1810] text-slate-800 dark:text-slate-200 flex flex-col overflow-hidden">
       <Header />
       <div className="flex flex-1 min-h-0">
         <HistorySidebar
@@ -178,17 +178,17 @@ const App: React.FC = () => {
         />
         <main className="flex-1 flex flex-col p-4 lg:p-6 min-w-0">
           <div className="text-center mb-4">
-            <h1 className="text-4xl font-bold font-space-grotesk text-white text-glow">Copy Writing Agent</h1>
-            <p className="text-slate-400 mt-2">Fill the form to get started, or ask a follow-up in the chat.</p>
+            <h1 className="text-4xl font-bold font-space-grotesk bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 bg-clip-text text-transparent drop-shadow-lg">Copy Writing Agent</h1>
+            <p className="text-slate-600 dark:text-slate-400 mt-2 text-base">Fill the form to get started, or ask a follow-up in the chat.</p>
           </div>
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-0 bg-[#0A101A]/50 border border-white/10 rounded-xl overflow-hidden min-h-0">
-            <div className="lg:col-span-2 p-4 overflow-y-auto">
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-0 bg-white/80 dark:bg-gradient-to-br dark:from-[#0A101A]/80 dark:to-[#1a1625]/80 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden min-h-0 shadow-2xl">
+            <div className="lg:col-span-2 p-4 overflow-y-auto bg-gradient-to-b from-orange-50/50 dark:from-slate-900/20 to-transparent">
               <FormPanel
                 key={currentConversationId || 'new-form'}
                 onSubmit={handleFormSubmit}
               />
             </div>
-            <div className="lg:col-span-3 flex flex-col border-t lg:border-t-0 lg:border-l border-white/10 overflow-hidden">
+            <div className="lg:col-span-3 flex flex-col border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-white/10 overflow-hidden bg-gradient-to-b from-slate-50/50 dark:from-slate-900/10 to-transparent">
               <ChatPanel
                 conversation={currentConversation}
                 isLoading={isLoading}

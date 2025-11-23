@@ -31,7 +31,7 @@ export const Composer: React.FC<ComposerProps> = ({ onSendMessage, disabled }) =
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Ask a follow-up or give a new instruction..."
-          className="w-full bg-[#0A101A]/50 border border-white/20 rounded-lg px-4 py-3 pr-12 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition disabled:opacity-50"
+          className="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-white/20 rounded-xl px-5 py-3.5 pr-12 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition disabled:opacity-50 hover:border-slate-400 dark:hover:border-white/30 shadow-sm"
           disabled={disabled}
           aria-label="Chat input"
         />
@@ -39,7 +39,7 @@ export const Composer: React.FC<ComposerProps> = ({ onSendMessage, disabled }) =
       <button
         type="submit"
         disabled={disabled || !text.trim()}
-        className="w-11 h-11 flex items-center justify-center bg-orange-600 text-white rounded-full transition-all duration-300 hover:bg-orange-500 disabled:bg-slate-700 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95"
+        className="w-12 h-12 flex items-center justify-center bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full transition-all duration-300 hover:shadow-lg disabled:bg-slate-400 dark:disabled:bg-slate-700 disabled:cursor-not-allowed transform hover:scale-110 active:scale-95 shadow-md"
         aria-label="Send message"
       >
         <SendIcon />

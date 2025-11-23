@@ -46,10 +46,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ conversation, isLoading, o
         <div className="flex flex-col flex-1 min-w-0 h-full min-h-0">
             <div className="flex-1 flex flex-col min-h-0">
                 {!currentConversationId && !isLoading ? (
-                    <div className="flex h-full flex-col items-center justify-center text-center text-slate-400 p-8">
-                        <SparklesIcon />
-                        <h2 className="mt-4 text-xl font-bold text-slate-200 font-space-grotesk">Start Creating</h2>
-                        <p className="mt-2 max-w-xs">
+                    <div className="flex h-full flex-col items-center justify-center text-center text-slate-600 dark:text-slate-400 p-8">
+                        <div className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 p-6 rounded-full mb-4 shadow-lg">
+                            <SparklesIcon />
+                        </div>
+                        <h2 className="mt-4 text-2xl font-bold bg-gradient-to-r from-orange-500 to-orange-700 bg-clip-text text-transparent font-space-grotesk">Start Creating</h2>
+                        <p className="mt-3 max-w-md text-slate-600 dark:text-slate-300 text-base">
                             Fill out the form on the left to generate your first piece of copy, or just start chatting below.
                         </p>
                     </div>
@@ -70,7 +72,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ conversation, isLoading, o
                     </div>
                 )}
             </div>
-            <div className="p-4 border-t border-white/10">
+            <div className="p-4 border-t border-slate-200 dark:border-white/10">
                 <Composer onSendMessage={onSendMessage} disabled={isLoading} />
             </div>
         </div>
