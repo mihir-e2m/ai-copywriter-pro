@@ -1,23 +1,17 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Header } from './components/Header';
 import { FormPanel } from './components/FormPanel';
 import { ChatPanel } from './components/ChatPanel';
 import { HistorySidebar } from './components/HistorySidebar';
-import { createChatSession, continueChat } from './services/geminiService';
-import { sendToN8nWebhook } from './services/n8nService';
+import { sendChatMessage, generateContentFromForm, generateBlogFromPrompt } from './services/n8nService';
 import type { FormState, ChatMessage, Conversation } from './types';
-import type { Chat } from '@google/genai';
 
 
 function buildPromptFromForm(formData: FormState): string {
-  return `Please generate copy with the following details:
-- Topic / Subject: ${formData.topicSubject}
-- Desired Tone: ${formData.tones.join(', ') || 'Not specified'}
-- Target Audience: ${formData.audience.join(', ') || 'General'}
-- Key Points to Cover:
-${formData.keyPoints}
-- Approximate Length: ${formData.length} words
-- Optional SEO Keywords to include: ${formData.seoKeywords.join(', ') || 'None'}`;
+  return `Create a full blog using the Spotted Fox Digital Marketing Copywriting Agent instructions. The topic is "${formData.topicSubject}". Write it in an ${formData.tones.join(', ') || 'educational, positive, solution-oriented'} tone for ${formData.audience.join(', ') || 'small to medium-sized business owners'}. Include examples that highlight how businesses improved conversions after redesigns, and add one short measurable-results example. Make the blog ${formData.length} words and naturally include SEO keywords such as ${formData.seoKeywords.join(', ') || 'website design agency, website redesign benefits'}. Follow all brand voice rules, use we/us language, speak directly to the reader, stay growth-oriented, avoid negative/problem-only framing, explain any technical terms simply, and end with one clear CTA.
+  
+  Key Points to Cover:
+  ${formData.keyPoints}`;
 }
 
 
@@ -25,11 +19,9 @@ const App: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const chatRef = useRef<Chat | null>(null);
 
   const handleSendMessage = useCallback(async (text: string) => {
     let conversationId = currentConversationId;
-    let chat = chatRef.current;
 
     if (!conversationId) {
       const newConversation: Conversation = {
@@ -37,9 +29,6 @@ const App: React.FC = () => {
         title: text.slice(0, 40) + (text.length > 40 ? '...' : ''),
         messages: [],
       };
-
-      chat = createChatSession(`You are a professional copywriter. The user asked: "${text}".`);
-      chatRef.current = chat;
 
       setConversations(prev => [...prev, newConversation]);
       setCurrentConversationId(newConversation.id);
@@ -59,8 +48,8 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Use n8n webhook instead of Gemini directly
-      const assistantResponseText = await sendToN8nWebhook(text);
+      // Use n8n webhook for chat
+      const assistantResponseText = await sendChatMessage(text);
 
       const assistantMessage: ChatMessage = {
         id: Date.now() + 1,
@@ -88,40 +77,77 @@ const App: React.FC = () => {
   }, [currentConversationId]);
 
   const handleFormSubmit = useCallback(async (formData: FormState) => {
+    console.log('Form submitted:', formData);
     let conversationId = currentConversationId;
-    let chat = chatRef.current;
+
+    const promptText = buildPromptFromForm(formData);
+    console.log('Constructed Prompt (for reference):', promptText);
 
     // If there is no active conversation, create a new one
     if (!conversationId) {
       const newConversation: Conversation = {
         id: Date.now(),
         title: formData.topicSubject || 'New Conversation',
-        messages: [],
+        messages: [], // Don't add the internal prompt message yet
       };
-
-      chat = createChatSession(`You are a professional copywriter helping a user with their project on the topic: "${formData.topicSubject}".`);
-      chatRef.current = chat;
 
       setConversations(prev => [...prev, newConversation]);
       setCurrentConversationId(newConversation.id);
       conversationId = newConversation.id;
-    } else if (!chat) {
-      // Re-initialize chat for an existing conversation if needed
-      const currentConv = conversations.find(c => c.id === conversationId);
-      if (currentConv) {
-        chat = createChatSession(`You are a professional copywriter helping a user with their project on the topic: "${currentConv.title}".`);
-        chatRef.current = chat;
-      }
     }
 
-    const promptText = buildPromptFromForm(formData);
+    setIsLoading(true);
 
-    // Use a slight delay to ensure state updates before sending message
-    setTimeout(() => {
-      handleSendMessage(promptText);
-    }, 0);
+    try {
+      console.log('Step 1: Calling Chat API with form data (type: form)...');
+      // 1. Call Chat API with form data (type: "form") to get the prompt
+      const promptOutput = await generateContentFromForm(formData);
+      console.log('Step 1 Complete - Prompt Output:', promptOutput);
 
-  }, [currentConversationId, conversations, handleSendMessage]);
+      // Show the prompt as a user message
+      const promptMessage: ChatMessage = {
+        id: Date.now(),
+        sender: 'user',
+        text: promptOutput,
+        status: 'sent',
+      };
+
+      setConversations(prev => prev.map(c =>
+        c.id === conversationId ? { ...c, messages: [...c.messages, promptMessage] } : c
+      ));
+
+      console.log('Step 2: Calling Generate API with prompt (type: chat)...');
+      // 2. Call Generate API with the prompt output (type: "chat") to get the final blog
+      const finalBlog = await generateBlogFromPrompt(promptOutput);
+      console.log('Step 2 Complete - Final Blog:', finalBlog);
+
+      const assistantMessage: ChatMessage = {
+        id: Date.now() + 1,
+        sender: 'assistant',
+        text: finalBlog,
+        status: 'sent',
+      };
+
+      setConversations(prev => prev.map(c =>
+        c.id === conversationId ? { ...c, messages: [...c.messages, assistantMessage] } : c
+      ));
+
+    } catch (error) {
+      console.error('Error in generation flow:', error);
+      const errorMessage: ChatMessage = {
+        id: Date.now() + 1,
+        sender: 'assistant',
+        text: 'Sorry, something went wrong while generating the content. Please check the console for details.',
+        status: 'error',
+      };
+      setConversations(prev => prev.map(c =>
+        c.id === conversationId ? { ...c, messages: [...c.messages, errorMessage] } : c
+      ));
+    } finally {
+      setIsLoading(false);
+    }
+
+  }, [currentConversationId, conversations]);
 
 
   const handleSelectConversation = useCallback(async (id: number) => {
@@ -129,8 +155,6 @@ const App: React.FC = () => {
     if (!selectedConversation) return;
 
     setIsLoading(true);
-    const chat = createChatSession(`You are a professional copywriter helping a user with their project on the topic: "${selectedConversation.title}".`);
-    chatRef.current = chat;
     setCurrentConversationId(id);
     setIsLoading(false);
 
@@ -138,7 +162,6 @@ const App: React.FC = () => {
 
   const handleNewChat = useCallback(() => {
     setCurrentConversationId(null);
-    chatRef.current = null;
   }, []);
 
   const currentConversation = conversations.find(c => c.id === currentConversationId);

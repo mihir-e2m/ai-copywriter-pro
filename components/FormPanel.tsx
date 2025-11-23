@@ -38,6 +38,13 @@ export const FormPanel: React.FC<FormPanelProps> = ({ onSubmit }) => {
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
+    console.log('FormPanel: handleSubmit triggered');
+    if (!formState.topicSubject || !formState.keyPoints) {
+      console.warn('FormPanel: Validation failed - missing required fields');
+      alert('Please fill in the Topic and Key Points fields.');
+      return;
+    }
+    console.log('FormPanel: Calling onSubmit with', formState);
     onSubmit(formState);
   }, [onSubmit, formState]);
 
@@ -47,7 +54,7 @@ export const FormPanel: React.FC<FormPanelProps> = ({ onSubmit }) => {
       <form onSubmit={handleSubmit} className="space-y-5 mx-auto">
         <div>
           <label htmlFor="topicSubject" className="block text-sm font-medium text-slate-300 mb-1">Topic / Subject</label>
-          <input type="text" name="topicSubject" id="topicSubject" value={formState.topicSubject} onChange={handleChange} className="w-full bg-[#0A101A]/50 border border-white/20 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition" placeholder="e.g., The Future of AI" required />
+          <input type="text" name="topicSubject" id="topicSubject" value={formState.topicSubject} onChange={handleChange} className="w-full bg-[#0A101A]/50 border border-white/20 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition" placeholder="e.g., The Future of AI" />
         </div>
 
         <div>
@@ -66,7 +73,7 @@ export const FormPanel: React.FC<FormPanelProps> = ({ onSubmit }) => {
 
         <div>
           <label htmlFor="keyPoints" className="block text-sm font-medium text-slate-300 mb-1">Key Points / Examples</label>
-          <textarea name="keyPoints" id="keyPoints" rows={3} value={formState.keyPoints} onChange={handleChange} className="w-full bg-[#0A101A]/50 border border-white/20 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition" placeholder="Enter main ideas, benefits, or existing copy to improve..." required></textarea>
+          <textarea name="keyPoints" id="keyPoints" rows={3} value={formState.keyPoints} onChange={handleChange} className="w-full bg-[#0A101A]/50 border border-white/20 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition" placeholder="Enter main ideas, benefits, or existing copy to improve..."></textarea>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
