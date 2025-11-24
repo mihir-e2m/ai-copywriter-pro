@@ -151,18 +151,20 @@ export const Header: React.FC<HeaderProps> = ({ selectedAgent, onSelectAgent, on
                 />
             </button>
             
-            {agentTitle && (
-                <div className="flex-1 flex flex-col items-center justify-center text-center">
-                    <h1 className="text-2xl font-bold font-space-grotesk bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 bg-clip-text text-transparent">
-                        {agentTitle}
-                    </h1>
-                    {agentDescription && (
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                            {agentDescription}
-                        </p>
-                    )}
-                </div>
-            )}
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+                {agentTitle && (
+                    <>
+                        <h1 className="text-2xl font-bold font-space-grotesk bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 bg-clip-text text-transparent">
+                            {agentTitle}
+                        </h1>
+                        {agentDescription && (
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                {agentDescription}
+                            </p>
+                        )}
+                    </>
+                )}
+            </div>
 
             <button 
                 onClick={toggleTheme}
