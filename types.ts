@@ -23,4 +23,6 @@ export interface Conversation {
     id: number;
     title: string;
     messages: ChatMessage[];
+    timestamp?: number;
+    sessionId?: string;
 }

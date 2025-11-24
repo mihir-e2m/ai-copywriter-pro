@@ -3,7 +3,7 @@ import type { ChatMessage as Message } from '../types';
 import { marked } from 'marked';
 
 const UserIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-orange-600 dark:text-orange-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
   </svg>
 );
@@ -19,7 +19,7 @@ const LoadingDots: React.FC = () => (
 
 
 const AssistantIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
   </svg>
 );
@@ -28,12 +28,22 @@ export const ChatMessage: React.FC<{ message: Message }> = ({ message }) => {
   const isAssistant = message.sender === 'assistant';
 
   const createMarkup = (text: string) => {
-    return { __html: marked(text, { breaks: true, gfm: true }) };
+    // Replace escaped newlines with actual newlines
+    const cleanedText = text.replace(/\\n/g, '\n');
+    
+    // Configure marked options for better rendering
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+      headerIds: false,
+      mangle: false
+    });
+    return { __html: marked(cleanedText) };
   };
 
   return (
     <div className={`flex items-start gap-4 animate-fade-in ${isAssistant ? '' : 'flex-row-reverse'}`}>
-      <div className={`flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center shadow-lg ${isAssistant ? 'bg-gradient-to-br from-orange-500 to-orange-600' : 'bg-gradient-to-br from-blue-500 to-blue-600'}`}>
+      <div className={`flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center shadow-lg ${isAssistant ? 'bg-gradient-to-br from-orange-500 to-orange-600' : 'bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-500/80 dark:to-orange-600/80 border border-orange-300 dark:border-orange-400/30'}`}>
         {isAssistant ? <AssistantIcon /> : <UserIcon />}
       </div>
       <div className={`max-w-2xl rounded-2xl px-5 py-4 shadow-lg ${isAssistant ? 'bg-white dark:bg-gradient-to-br dark:from-slate-800/90 dark:to-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-white/10 rounded-tl-none' : 'bg-gradient-to-br from-orange-600 to-orange-700 rounded-tr-none text-white'}`}>
@@ -42,7 +52,14 @@ export const ChatMessage: React.FC<{ message: Message }> = ({ message }) => {
         ) : message.status === 'error' ? (
             <p className="text-red-400">{message.text}</p>
         ) : (
-             <div className={`prose prose-sm max-w-none ${isAssistant ? 'prose-slate dark:prose-invert' : 'prose-invert'}`} dangerouslySetInnerHTML={createMarkup(message.text)}></div>
+             <div 
+               className={`prose prose-sm md:prose-base max-w-none ${
+                 isAssistant 
+                   ? 'prose-slate dark:prose-invert prose-headings:font-bold prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-p:leading-relaxed prose-a:text-orange-600 dark:prose-a:text-orange-400 prose-strong:text-slate-900 dark:prose-strong:text-slate-100 prose-ul:list-disc prose-ol:list-decimal prose-li:marker:text-orange-500' 
+                   : 'prose-invert prose-headings:text-white prose-p:text-white prose-strong:text-white prose-a:text-orange-100 prose-li:marker:text-orange-200'
+               }`} 
+               dangerouslySetInnerHTML={createMarkup(message.text)}
+             />
         )}
       </div>
     </div>
