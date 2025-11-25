@@ -3,8 +3,8 @@ import type { ChatMessage as Message } from '../types';
 import { marked } from 'marked';
 
 const UserIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-orange-600 dark:text-orange-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
   </svg>
 );
 
@@ -64,7 +64,7 @@ export const ChatMessage: React.FC<{ message: Message }> = ({ message }) => {
 
   return (
     <div className={`flex items-start gap-4 animate-fade-in min-w-0 ${isAssistant ? '' : 'flex-row-reverse'}`}>
-      <div className={`flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center shadow-lg ${isAssistant ? 'bg-gradient-to-br from-orange-500 to-orange-600' : 'bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-500/80 dark:to-orange-600/80 border border-orange-300 dark:border-orange-400/30'}`}>
+      <div className={`flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center shadow-lg ${isAssistant ? 'bg-gradient-to-br from-orange-500 to-orange-600' : 'bg-gradient-to-br from-orange-500 to-orange-600'}`}>
         {isAssistant ? <AssistantIcon /> : <UserIcon />}
       </div>
       <div className="flex flex-col gap-2 max-w-2xl min-w-0">
