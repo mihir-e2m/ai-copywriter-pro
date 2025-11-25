@@ -69,12 +69,12 @@ const App: React.FC = () => {
           // Parse chat messages from each record
           const chatMessages: ChatMessage[] = [];
           let messageIdCounter = 0;
-          
+
           sortedRecords.forEach((record) => {
             try {
               console.log('🔍 Processing record chat:', record.chat);
               console.log('🔍 Chat type:', typeof record.chat);
-              
+
               // Check if chat is already an object or a string
               let chatArray;
               if (typeof record.chat === 'string') {
@@ -83,7 +83,7 @@ const App: React.FC = () => {
                 chatArray = record.chat;
               }
               console.log('✅ Chat array:', chatArray);
-              
+
               // Each item in chatArray is like {"user": "hi", "agent": "hello"}
               chatArray.forEach((chatPair: any) => {
                 console.log('💬 Processing chat pair:', chatPair);
@@ -98,7 +98,7 @@ const App: React.FC = () => {
                   console.log('👤 Adding user message:', userMsg);
                   chatMessages.push(userMsg);
                 }
-                
+
                 // Add agent message if exists
                 if (chatPair.agent) {
                   const agentMsg = {
@@ -115,7 +115,7 @@ const App: React.FC = () => {
               console.error('❌ Error parsing chat JSON:', parseError, record.chat);
             }
           });
-          
+
           console.log('📨 Total chat messages created:', chatMessages.length);
           console.log('📨 Chat messages:', chatMessages);
 
@@ -161,6 +161,7 @@ const App: React.FC = () => {
         id: Date.now(),
         title: text.slice(0, 40) + (text.length > 40 ? '...' : ''),
         messages: [],
+        timestamp: Date.now(),
       };
 
       setConversations(prev => [...prev, newConversation]);
@@ -175,6 +176,10 @@ const App: React.FC = () => {
       status: 'sent',
     };
 
+    // Get current conversation messages before updating
+    const currentConversation = conversations.find(c => c.id === conversationId);
+    const currentMessages = currentConversation?.messages || [];
+
     setConversations(prev => prev.map(c =>
       c.id === conversationId ? { ...c, messages: [...c.messages, userMessage] } : c
     ));
@@ -184,9 +189,22 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Use n8n webhook for chat with tableName
+      // Prepare previous messages in API format: [{"user": "hi", "agent": "response"}, ...]
+      const previousMessages = [];
+      for (let i = 0; i < currentMessages.length; i += 2) {
+        const userMsg = currentMessages[i];
+        const agentMsg = currentMessages[i + 1];
+        if (userMsg && agentMsg) {
+          previousMessages.push({
+            user: userMsg.text,
+            agent: agentMsg.text
+          });
+        }
+      }
+
+      // Use n8n webhook for chat with tableName and previous messages
       const tableName = selectedAgent ? getTableNameForAgent(selectedAgent) : undefined;
-      const assistantResponseText = await sendChatMessage(text, tableName);
+      const assistantResponseText = await sendChatMessage(text, tableName, previousMessages);
 
       const assistantMessage: ChatMessage = {
         id: Date.now() + 1,
@@ -211,7 +229,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentConversationId, selectedAgent]);
+  }, [currentConversationId, selectedAgent, conversations]);
 
   const handleFormSubmit = useCallback(async (formData: FormState) => {
     console.log('Form submitted:', formData);
@@ -226,6 +244,7 @@ const App: React.FC = () => {
         id: Date.now(),
         title: formData.topicSubject || 'New Conversation',
         messages: [],
+        timestamp: Date.now(),
       };
 
       setConversations(prev => [...prev, newConversation]);
@@ -250,6 +269,10 @@ ${formData.keyPoints}`;
       status: 'sent',
     };
 
+    // Get current conversation messages before updating
+    const currentConversation = conversations.find(c => c.id === conversationId);
+    const currentMessages = currentConversation?.messages || [];
+
     setConversations(prev => prev.map(c =>
       c.id === conversationId ? { ...c, messages: [userMessage] } : c
     ));
@@ -264,10 +287,23 @@ ${formData.keyPoints}`;
       const promptOutput = await generateContentFromForm(formData);
       console.log('Step 1 Complete - Prompt Output:', promptOutput);
 
+      // Prepare previous messages in API format: [{"user": "hi", "agent": "response"}, ...]
+      const previousMessages = [];
+      for (let i = 0; i < currentMessages.length; i += 2) {
+        const userMsg = currentMessages[i];
+        const agentMsg = currentMessages[i + 1];
+        if (userMsg && agentMsg) {
+          previousMessages.push({
+            user: userMsg.text,
+            agent: agentMsg.text
+          });
+        }
+      }
+
       console.log('Step 2: Calling Chat API with prompt to get final blog...');
       // 2. Call Chat API with the prompt output (type: "chat") to get the final blog
       const tableName = selectedAgent ? getTableNameForAgent(selectedAgent) : undefined;
-      const finalBlog = await sendChatMessage(promptOutput, tableName);
+      const finalBlog = await sendChatMessage(promptOutput, tableName, previousMessages);
       console.log('Step 2 Complete - Final Blog:', finalBlog);
 
       const assistantMessage: ChatMessage = {
@@ -309,7 +345,7 @@ ${formData.keyPoints}`;
     console.log('✅ Selected conversation:', selectedConversation);
     console.log('📝 Messages in conversation:', selectedConversation.messages.length);
     console.log('🆔 Using session ID:', selectedConversation.sessionId);
-    
+
     // Set the session ID to the old conversation's session ID
     if (selectedConversation.sessionId) {
       console.log('🔄 Setting session ID to:', selectedConversation.sessionId);
@@ -318,7 +354,7 @@ ${formData.keyPoints}`;
     } else {
       console.warn('⚠️ No sessionId found in conversation!');
     }
-    
+
     setIsLoading(true);
     setCurrentConversationId(id);
     setShowForm(false); // Hide form when viewing history
@@ -454,7 +490,7 @@ ${formData.keyPoints}`;
       />
       <div className="flex flex-1 min-h-0">
         <HistorySidebar
-          conversations={conversations}
+          conversations={[...conversations].sort((a, b) => (b.timestamp || b.id) - (a.timestamp || a.id))}
           currentConversationId={currentConversation?.id ?? null}
           onSelectConversation={handleSelectConversation}
           onNewChat={handleNewChat}

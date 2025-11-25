@@ -56,7 +56,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ conversation, isLoading, o
                         </p>
                     </div>
                 ) : (
-                    <div className="flex-1 overflow-y-auto flex flex-col p-6 space-y-6">
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col p-6 space-y-6">
                         {messages.map((msg) => (
                             <ChatMessageComponent key={msg.id} message={msg} />
                         ))}

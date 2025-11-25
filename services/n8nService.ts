@@ -155,13 +155,15 @@ export async function generateBlogFromPrompt(promptText: string): Promise<string
     }
 }
 
-export async function sendChatMessage(text: string, tableName?: string): Promise<string> {
+export async function sendChatMessage(text: string, tableName?: string, previousMessages?: Array<{user?: string, agent?: string}>): Promise<string> {
     const CHAT_BASE_URL = import.meta.env.VITE_CHAT_BASE_URL;
     if (!CHAT_BASE_URL) {
         throw new Error("VITE_CHAT_BASE_URL is not defined in .env");
     }
 
     try {
+        console.log('🔍 sendChatMessage called with:', { text, tableName, previousMessages });
+        
         // Ensure text is a string to avoid object injection
         const safeText = typeof text === 'string' ? text : JSON.stringify(text);
 
@@ -174,6 +176,15 @@ export async function sendChatMessage(text: string, tableName?: string): Promise
         // Add tableName if provided
         if (tableName) {
             payload.tableName = tableName;
+        }
+
+        // Add last 5 messages (always include, even if empty array)
+        if (previousMessages) {
+            const lastMessages = previousMessages.slice(-5);
+            payload.lastMessages = lastMessages;
+            console.log('✅ Added lastMessages to payload:', lastMessages);
+        } else {
+            console.log('⚠️ previousMessages is undefined or null');
         }
 
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -214,17 +225,20 @@ export async function sendChatMessage(text: string, tableName?: string): Promise
             if (Array.isArray(chatContent)) {
                 // Get the last agent message from the array
                 const lastMessage = chatContent[chatContent.length - 1];
-                if (lastMessage && lastMessage.agent) {
+                if (lastMessage && lastMessage.agent && lastMessage.agent.trim() !== '') {
                     return lastMessage.agent;
                 }
-                // Fallback: stringify if we can't extract
-                return JSON.stringify(chatContent);
             }
             
             // If it's already a string, return it
-            if (typeof chatContent === 'string') {
+            if (typeof chatContent === 'string' && chatContent.trim() !== '') {
                 return chatContent;
             }
+            
+            // Try to extract from top-level data fields
+            if (data.agent) return data.agent;
+            if (data.output) return data.output;
+            if (data.message) return data.message;
             
             // Fallback
             return typeof data === 'string' ? data : JSON.stringify(data);

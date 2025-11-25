@@ -25,15 +25,36 @@ export const SimpleChatInterface: React.FC<SimpleChatInterfaceProps> = ({ agentT
       status: 'sent',
     };
 
-    setConversation(prev => ({
-      ...prev,
-      messages: [...prev.messages, userMessage],
-    }));
+    // Capture current messages before updating state
+    let currentMessages: ChatMessage[] = [];
+    setConversation(prev => {
+      currentMessages = prev.messages;
+      return {
+        ...prev,
+        messages: [...prev.messages, userMessage],
+      };
+    });
 
     setIsLoading(true);
 
     try {
-      const assistantResponseText = await sendChatMessage(text, tableName);
+      // Get last 5 messages in API format: [{"user": "hi", "agent": "response"}, ...]
+      const previousMessages = [];
+      for (let i = 0; i < currentMessages.length; i += 2) {
+        const userMsg = currentMessages[i];
+        const agentMsg = currentMessages[i + 1];
+        if (userMsg && agentMsg) {
+          previousMessages.push({
+            user: userMsg.text,
+            agent: agentMsg.text
+          });
+        }
+      }
+
+      console.log('📝 Current messages count:', currentMessages.length);
+      console.log('📝 Previous messages to send:', previousMessages);
+
+      const assistantResponseText = await sendChatMessage(text, tableName, previousMessages);
 
       const assistantMessage: ChatMessage = {
         id: Date.now() + 1,
