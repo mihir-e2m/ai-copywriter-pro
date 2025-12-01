@@ -4,10 +4,11 @@ import { FormPanel } from './components/FormPanel';
 import { ChatPanel } from './components/ChatPanel';
 import { HistorySidebar } from './components/HistorySidebar';
 import { SimpleChatInterface } from './components/SimpleChatInterface';
+import { LoginPanel } from './components/LoginPanel';
+import { Dashboard } from './components/Dashboard';
 import { sendChatMessage, generateContentFromForm, generateBlogFromPrompt, resetSessionId, fetchConversationHistory, setSessionId } from './services/n8nService';
 import type { FormState, ChatMessage, Conversation } from './types';
-
-type AgentType = 'copywriting' | 'social-media' | 'email';
+import type { AgentType } from './utils/dashboardUtils';
 
 // Map agent types to table names
 function getTableNameForAgent(agent: AgentType): string {
@@ -28,11 +29,46 @@ function buildPromptFromForm(formData: FormState): string {
 
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>('');
   const [selectedAgent, setSelectedAgent] = useState<AgentType | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showForm, setShowForm] = useState(true);
+  const [dashboardKey, setDashboardKey] = useState(0); // Key to force dashboard refresh
+  
+  // Cache for conversation history to avoid duplicate API calls
+  const [conversationHistoryCache, setConversationHistoryCache] = useState<{
+    copywriting: any[] | null;
+    'social-media': any[] | null;
+    email: any[] | null;
+  }>({
+    copywriting: null,
+    'social-media': null,
+    email: null
+  });
+
+  const handleLogin = useCallback((email: string) => {
+    setIsAuthenticated(true);
+    setUserEmail(email);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setIsAuthenticated(false);
+    setUserEmail('');
+    setSelectedAgent(null);
+    setConversations([]);
+    setCurrentConversationId(null);
+    setShowForm(true);
+    resetSessionId();
+    // Clear conversation history cache
+    setConversationHistoryCache({
+      copywriting: null,
+      'social-media': null,
+      email: null
+    });
+  }, []);
 
   const handleSelectAgent = useCallback(async (agent: AgentType) => {
     setSelectedAgent(agent);
@@ -40,10 +76,30 @@ const App: React.FC = () => {
     setShowForm(true);
     resetSessionId(); // Reset session ID when switching agents
 
-    // Fetch conversation history for the selected agent
+    // Check if we have cached history for this agent
+    let history = conversationHistoryCache[agent];
+    
+    // If not cached, fetch it
+    if (!history) {
+      try {
+        history = await fetchConversationHistory(agent);
+        console.log('📚 Fetched conversation history from API:', history);
+        
+        // Update cache
+        setConversationHistoryCache(prev => ({
+          ...prev,
+          [agent]: history
+        }));
+      } catch (error) {
+        console.error('❌ Error fetching conversation history:', error);
+        history = [];
+      }
+    } else {
+      console.log('📚 Using cached conversation history:', history);
+    }
+
+    // Process the history
     try {
-      const history = await fetchConversationHistory(agent);
-      console.log('📚 Fetched conversation history:', history);
 
       // Group messages by sessionId
       const groupedBySession: { [key: string]: any[] } = {};
@@ -143,14 +199,16 @@ const App: React.FC = () => {
       console.error('❌ Error loading conversation history:', error);
       setConversations([]);
     }
-  }, []);
+  }, [conversationHistoryCache]);
 
   const handleLogoClick = useCallback(() => {
     setSelectedAgent(null);
-    setConversations([]);
     setCurrentConversationId(null);
     setShowForm(true);
-    resetSessionId(); // Reset session ID when going back to agent selection
+    resetSessionId(); // Reset session ID when going back to dashboard
+    
+    // Increment key to force Dashboard remount and data refresh
+    setDashboardKey(prev => prev + 1);
   }, []);
 
   const handleSendMessage = useCallback(async (text: string) => {
@@ -362,6 +420,100 @@ ${formData.keyPoints}`;
 
   }, [conversations]);
 
+  // Handle conversation selection from dashboard
+  const handleDashboardConversationSelect = useCallback(async (conversationId: number, agent: AgentType, sessionId: string) => {
+    // Set the agent first
+    setSelectedAgent(agent);
+    
+    // Set the session ID
+    setSessionId(sessionId);
+    
+    // Fetch conversation history for the agent
+    try {
+      const history = await fetchConversationHistory(agent);
+      
+      // Group messages by sessionId
+      const groupedBySession: { [key: string]: any[] } = {};
+      history.forEach((message: any) => {
+        const msgSessionId = message.sessionId || 'unknown';
+        if (!groupedBySession[msgSessionId]) {
+          groupedBySession[msgSessionId] = [];
+        }
+        groupedBySession[msgSessionId].push(message);
+      });
+
+      // Convert grouped messages to conversations
+      const loadedConversations: Conversation[] = Object.entries(groupedBySession)
+        .map(([sid, records]) => {
+          const sortedRecords = records.sort((a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+
+          const chatMessages: ChatMessage[] = [];
+          let messageIdCounter = 0;
+
+          sortedRecords.forEach((record) => {
+            try {
+              let chatArray;
+              if (typeof record.chat === 'string') {
+                chatArray = JSON.parse(record.chat);
+              } else {
+                chatArray = record.chat;
+              }
+
+              if (Array.isArray(chatArray)) {
+                chatArray.forEach((chatPair: any) => {
+                  if (chatPair.user) {
+                    chatMessages.push({
+                      id: messageIdCounter++,
+                      sender: 'user' as const,
+                      text: chatPair.user,
+                      status: 'sent' as const
+                    });
+                  }
+                  if (chatPair.agent) {
+                    chatMessages.push({
+                      id: messageIdCounter++,
+                      sender: 'assistant' as const,
+                      text: chatPair.agent,
+                      status: 'sent' as const
+                    });
+                  }
+                });
+              }
+            } catch (parseError) {
+              console.error('❌ Error parsing chat JSON:', parseError);
+            }
+          });
+
+          const firstUserMessage = chatMessages.find(m => m.sender === 'user');
+          const title = firstUserMessage?.text?.substring(0, 40) || 'Conversation';
+          const latestRecordTime = new Date(sortedRecords[sortedRecords.length - 1].created_at).getTime();
+
+          return {
+            id: Date.now() + Math.random(),
+            title: title + (title.length > 40 ? '...' : ''),
+            messages: chatMessages,
+            timestamp: latestRecordTime,
+            sessionId: sid
+          };
+        })
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+      setConversations(loadedConversations);
+      
+      // Find and set the current conversation
+      const targetConversation = loadedConversations.find(c => c.sessionId === sessionId);
+      if (targetConversation) {
+        setCurrentConversationId(targetConversation.id);
+      }
+      
+      setShowForm(false);
+    } catch (error) {
+      console.error('❌ Error loading conversation:', error);
+    }
+  }, []);
+
   const handleNewChat = useCallback(() => {
     setCurrentConversationId(null);
     setShowForm(true); // Show form again for new chat
@@ -370,89 +522,24 @@ ${formData.keyPoints}`;
 
   const currentConversation = conversations.find(c => c.id === currentConversationId);
 
-  // Initial agent selection screen
+  // Show login screen if not authenticated
+  if (!isAuthenticated) {
+    return <LoginPanel onLogin={handleLogin} />;
+  }
+
+  // Show dashboard if no agent is selected
   if (!selectedAgent) {
     return (
-      <div className="h-screen bg-gradient-to-br from-orange-50 via-slate-50 to-orange-100 dark:from-[#0a0e1a] dark:via-[#1a1625] dark:to-[#2d1810] text-slate-800 dark:text-slate-200 flex flex-col overflow-hidden">
-        <Header onLogoClick={handleLogoClick} />
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="max-w-5xl w-full">
-            <div className="text-center mb-16 animate-fade-in">
-              <h1 className="text-6xl font-bold font-space-grotesk bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 bg-clip-text text-transparent mb-6">
-                Welcome to Spotted Fox AI
-              </h1>
-              <p className="text-2xl text-slate-600 dark:text-slate-400 font-light">
-                Choose your AI assistant to get started
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-              {/* Copywriting Agent */}
-              <button
-                onClick={() => handleSelectAgent('copywriting')}
-                className="group relative bg-white dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl p-10 shadow-xl border-2 border-slate-200 dark:border-slate-700 hover:border-orange-400 dark:hover:border-orange-500 transition-all duration-300 hover:-translate-y-2"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-orange-600/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative flex flex-col items-center text-center">
-                  <div className="w-24 h-24 mb-8 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-2xl group-hover:shadow-orange-500/50 transition-all duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                    Copywriting Agent
-                  </h3>
-                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Create compelling blog posts, website copy, and marketing content with advanced customization
-                  </p>
-                </div>
-              </button>
-
-              {/* Social Media Generator */}
-              <button
-                onClick={() => handleSelectAgent('social-media')}
-                className="group relative bg-white dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl p-10 shadow-xl border-2 border-slate-200 dark:border-slate-700 hover:border-orange-400 dark:hover:border-orange-500 transition-all duration-300 hover:-translate-y-2"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-orange-600/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative flex flex-col items-center text-center">
-                  <div className="w-24 h-24 mb-8 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-2xl group-hover:shadow-orange-500/50 transition-all duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                    Social Media Generator
-                  </h3>
-                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Generate engaging social media posts for Facebook, Instagram, Twitter, and LinkedIn
-                  </p>
-                </div>
-              </button>
-
-              {/* Email Writing Tool */}
-              <button
-                onClick={() => handleSelectAgent('email')}
-                className="group relative bg-white dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl p-10 shadow-xl border-2 border-slate-200 dark:border-slate-700 hover:border-orange-400 dark:hover:border-orange-500 transition-all duration-300 hover:-translate-y-2"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-orange-600/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative flex flex-col items-center text-center">
-                  <div className="w-24 h-24 mb-8 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-2xl group-hover:shadow-orange-500/50 transition-all duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                    Email Writing Tool
-                  </h3>
-                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Craft professional emails, newsletters, and email campaigns that convert
-                  </p>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Dashboard
+        key={dashboardKey}
+        userEmail={userEmail}
+        onSelectAgent={handleSelectAgent}
+        onSelectConversation={handleDashboardConversationSelect}
+        onLogout={handleLogout}
+        onLogoClick={handleLogoClick}
+        conversationHistoryCache={conversationHistoryCache}
+        onCacheUpdate={setConversationHistoryCache}
+      />
     );
   }
 
@@ -487,6 +574,8 @@ ${formData.keyPoints}`;
         onLogoClick={handleLogoClick}
         agentTitle={agentInfo.title}
         agentDescription={agentInfo.description}
+        userEmail={userEmail}
+        onLogout={handleLogout}
       />
       <div className="flex flex-1 min-h-0">
         <HistorySidebar

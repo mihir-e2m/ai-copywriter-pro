@@ -9,6 +9,8 @@ interface HeaderProps {
     onLogoClick?: () => void;
     agentTitle?: string;
     agentDescription?: string;
+    userEmail?: string;
+    onLogout?: () => void;
 }
 
 interface CustomDropdownProps {
@@ -130,7 +132,73 @@ const MoonIcon = () => (
     </svg>
 );
 
-export const Header: React.FC<HeaderProps> = ({ selectedAgent, onSelectAgent, onLogoClick, agentTitle, agentDescription }) => {
+const UserProfileDropdown: React.FC<{ userEmail: string; onLogout: () => void }> = ({ userEmail, onLogout }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Get initials from email
+    const getInitials = (email: string) => {
+        const name = email.split('@')[0];
+        return name.substring(0, 2).toUpperCase();
+    };
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200 border-2 border-white dark:border-slate-800"
+            >
+                {getInitials(userEmail)}
+            </button>
+
+            {isOpen && (
+                <div className="absolute top-full mt-2 right-0 w-64 bg-white dark:bg-slate-900 backdrop-blur-xl rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden animate-fade-in z-50">
+                    {/* User Info Section */}
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-base shadow-sm">
+                                {getInitials(userEmail)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Signed in as</p>
+                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{userEmail}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Logout Button */}
+                    <div className="p-2">
+                        <button
+                            onClick={() => {
+                                onLogout();
+                                setIsOpen(false);
+                            }}
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-150 font-medium text-sm"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            <span>Logout</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export const Header: React.FC<HeaderProps> = ({ selectedAgent, onSelectAgent, onLogoClick, agentTitle, agentDescription, userEmail, onLogout }) => {
     const { theme, toggleTheme } = useTheme();
 
     return (
@@ -166,13 +234,18 @@ export const Header: React.FC<HeaderProps> = ({ selectedAgent, onSelectAgent, on
                 )}
             </div>
 
-            <button 
-                onClick={toggleTheme}
-                className="h-11 w-11 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 dark:from-slate-800/50 dark:to-slate-900/50 flex items-center justify-center hover:from-orange-200 hover:to-orange-300 dark:hover:from-slate-700/50 dark:hover:to-slate-800/50 transition-all duration-200 border border-orange-300 dark:border-white/10 shadow-md transform hover:scale-110 active:scale-95 text-orange-600 dark:text-orange-400"
-                aria-label="Toggle theme"
-            >
-                {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-            </button>
+            <div className="flex items-center gap-3">
+                <button 
+                    onClick={toggleTheme}
+                    className="h-11 w-11 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 dark:from-slate-800/50 dark:to-slate-900/50 flex items-center justify-center hover:from-orange-200 hover:to-orange-300 dark:hover:from-slate-700/50 dark:hover:to-slate-800/50 transition-all duration-200 border border-orange-300 dark:border-white/10 shadow-md transform hover:scale-110 active:scale-95 text-orange-600 dark:text-orange-400"
+                    aria-label="Toggle theme"
+                >
+                    {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+                </button>
+                {userEmail && onLogout && (
+                    <UserProfileDropdown userEmail={userEmail} onLogout={onLogout} />
+                )}
+            </div>
         </header>
     );
 };
